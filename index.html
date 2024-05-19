@@ -182,194 +182,124 @@
 </section>
 <!-- End paper Related Work -->
 
-<!--Methodology -->
-<section class="section">
-    <div class="container is-max-widescreen">
-        <div class="rows">
-            <div class="rows is-centered ">
-                <div class="row is-full-width">
-                    <h2 class="title is-3"><span class="dvima">Methodology </span></h2>
-                    <br>
-                    <br>
 
-                    Our work began by investigating the requirements of the task and understanding the specific needs of
-                    the pathology department, given that they would be providing the data and conducting the
-                    annotations. Through meetings, we came to the conclusion that accurately capturing the precise shape
-                    of tumor areas is essential for pathologists. It became evident that the existing tool in question,
-                    QuPath, lacks the capability to differentiate between tumor and non-tumor areas when annotations are
-                    made using rectangles (bounding boxes). Consequently, the coexistence of both tumor and non-tumor
-                    regions within a single rectangle would be mostly unavoidable. As a result, the focus of our
-                    approach shifted towards segmentation rather than object detection. While awaiting annotations, our
-                    attention turned to preparing the data for compatibility with deep learning models, specifically
-                    YOLO. The annotations were being made on QuPath, since it offers the flexibility to annotate data in
-                    various formats relevant to computer vision, including bounding boxes for object detection and
-                    polygons for segmentation. However, the challenge arose from the size and resolution of pathology
-                    slides, often exceeding 5-10 gigabytes and reaching resolutions of up to 100,000 x 100,000 pixels.
-                    Moreover, these slides are stored in a specific file format, making direct usage with the model
-                    impossible without dividing it into smaller tiles. <br> <br>
+<section class="section">
+    <div class="container is-max-desktop">
+        <!-- Methodology. -->
+        <div class="columns is-centered has-text-centered">
+            <div class="column">
+                <h2 class="title is-3">Methodology</h2>
+                <div class="content has-text-justified">
+                <br><br>
+                Our work began by investigating the requirements of the task and understanding the specific needs of the pathology department, given that they would be providing the data and conducting the annotations. Through meetings, we concluded that accurately capturing the precise shape of tumor areas is essential for pathologists. It became evident that the existing tool in question, QuPath, lacks the capability to differentiate between tumor and non-tumor areas when annotations are made using rectangles (bounding boxes). Consequently, the coexistence of both tumor and non-tumor regions within a single rectangle would be mostly unavoidable. As a result, the focus of our approach shifted towards segmentation rather than object detection. While awaiting annotations, our attention turned to preparing the data for compatibility with deep learning models, specifically YOLO.
+                The annotations were being made on QuPath, since it offers the flexibility to annotate data in various formats relevant to computer vision, including bounding boxes for object detection and polygons for segmentation. However, the challenge arose from the size and resolution of pathology slides, often exceeding 5-10 gigabytes and reaching resolutions of up to 100,000 x 100,000 pixels. Moreover, these slides are stored in a specific file format, making direct usage with the model impossible without dividing it into smaller tiles.
+                <br><br><br>
+                <img src="static/images/annotedSlide.jpeg" class="interpolation-image" alt="Annotated pathology slide" style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
+                <br>
+                To address this, we explored QuPath's built-in scripting tool, which utilizes the Groovy language. This tool provides functions to interact with QuPath, enabling diverse import/export and analysis capabilities. Our focus then shifted to leveraging this scripting tool to achieve tiling functionality. Through scripting within QuPath, we devised a method to extract annotated areas as tiles from the currently opened image, alongside their segmentation masks.
+                <br><br><br>
+                <img src="static/images/tile_argument.png" class="interpolation-image" alt="Tiling arguments" style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
+                <br>
+                We used the parameters given in the code snippet:
+                <br><br>
+                <span style="font-weight: bold">classNames:</span> An array containing the names of classes or labels. In our project, we have one class named "Tumor".<br>
+                <span style="font-weight: bold">downsample:</span> A factor by which the image is downsampled. It's set to 3, meaning the image is reduced in size by a factor of 3. We experimented with various downsampling values, but when we opted for a high factor, we ended up with a limited number of images. Given that our dataset was already smaller than the one used in the reference project, we aimed to avoid further loss of information.<br>
+                <span style="font-weight: bold">patchSize:</span> Defines the size of patches or segments of the image. It's set to 640, which corresponds to the input size of YOLO.<br>
+                <span style="font-weight: bold">pixelOverlap:</span> The amount of overlap between adjacent patches, measured in pixels. It's set to 160, suggesting that adjacent patches will overlap by 160 pixels.<br>
+                <span style="font-weight: bold">imageExtension:</span> Represents the file extension of the image files. It's set to ".png", denoting that the images are formatted in PNG. PNG format was chosen over JPG or TIFF due to its compatibility and superior quality.<br>
+                <span style="font-weight: bold">multiChannel:</span> A boolean variable indicating whether the images are multi-channel or not.<br>
+                <span style="font-weight: bold">onlyAnnotated:</span> Another boolean option. When set to true, it indicates that only annotated images will undergo processing. We set it to true to isolate the annotated regions from the background. Without this setting, the scanning of images resulted in a high presence of background, and the tiling process without background cleaning led to a lower frequency of annotated regions.<br>
+                <img src="static/images/tisue_mask.png" class="interpolation-image" alt="An example tile and its mask." style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
+                <br>
+                After the completion of annotations and the creation of tiles for each slide, all tiles and masks are accumulated within a directory for further processing. However, YOLO's data format differs from other models, as it represents each annotation as a text file with each object represented as a line in the following format:
+                <br><br>
+                To accommodate this format, we converted the masks by extracting polygons and saving these polygons in the appropriate format. Notably, the default YOLO format does not support the representation of polygons with holes. To address this limitation, we found a solution that involves connecting inner holes with outer circles, which has been published as open source. This approach enables us to accurately represent holes within the polygons with YOLO format, without deforming actual polygon coordinates.
+                <a href="https://github.com/ryouchinsa/Rectlabel-support/blob/master/general_json2yolo.py">link</a>
+                <br><br><br>
+                <img src="static/images/mask.png" class="interpolation-image" alt="An example original mask, and visualization of the created YOLO format." style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
+                <br>
+                <span style="font-weight: bold">Model Training</span> As described in the dataset and introduction part, the aim of this project was the segmentation of tumor-contained areas. Due to its notable speed and efficiency, we chose YOLO as the base model over state-of-the-art instance segmentation models like Fast R-CNN, Mask R-CNN, and Panoptic FPN. YOLO, short for "You Only Look Once," has emerged as a pivotal technology in various domains due to its real-time object detection capabilities. The model works based on the image’s grids. The algorithm of this process works by dividing the input image into a grid of cells. Each cell is responsible for predicting bounding boxes and class probabilities for an object within it. This approach allows YOLO to be computationally efficient. In this context, YOLOv8 represents a single-stage object detection model. The single-stage detector works by processing all grids at once. A key disparity between a two-stage detector and a single-stage detector lies in how they handle processing. Specifically, in the two-stage approach, the processing of regions of interest and classification occurs on different cycles.
+                <br><br>
+                <span style="font-weight: bold">Extension</span> After obtaining the model, we explored various methods to integrate it into QuPath. Since QuPath is written in Java, which is not widely used in machine learning, it lacks the convenience of tools and libraries for seamless integration with machine learning models. Additionally, the ultralytics library, which facilitates YOLO model training and predictions in Python, presents challenges due to its complex class structures and design, making implementation of model inference through Java more difficult, especially considering time constraints. Our approach involved using a Python script to handle model inference and output conversion, while restricting the extension to input/output tasks only. Although this approach requires additional setup, including the presence of Python and the script on the computer, it offers significantly more flexibility in terms of model integration. By separating the model inference process from Java, we were able to overcome the limitations posed by the language and leverage the rich ecosystem of machine learning tools available in Python.
+                <br><br><br>
+                <img src="static/images/qupath.jpeg" class="interpolation-image" alt="Extension interface. Containing inputs for script directory (which contains script, model and virtual environment), model confidence, model IoU. The outputs are displayed on the text field at the bottom." style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
+                <br>
+                <p style="font-size: 100%">
+                    The overall workflow of the extension is as follows:
                     <br>
-                    <img src="static/images/annotedSlide.jpg" class="interpolation-image"
-                         alt="" style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
+                    <li><span style="font-weight: bold">(1.)</span> A region of interest (ROI) is selected within QuPath, which can be of any size but must be in the form of a rectangle.</li>
                     <br>
-                    To address this, we explored QuPath's built-in scripting tool, which utilizes the Groovy language.
-                    This tool provides functions to interact with QuPath, enabling diverse import/export and analysis
-                    capabilities. Our focus then shifted to leveraging this scripting tool to achieve tiling
-                    functionality. Through scripting within QuPath, we devised a method to extract annotated areas as
-                    tiles from the currently opened image, alongside with their segmentation masks. <br> <br>
+                    <li><span style="font-weight: bold">(2.)</span> Upon pressing the "Segment Selected Region" button:</li>
                     <br>
-                    <img src="static/images/tile_argument.png" class="interpolation-image"
-                         alt="Tiling arguments"
-                         style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
+                    <li><span style="font-weight: bold">(2.a.)</span> The selected region is tiled to match the size required for model inference. These tiled images are temporarily saved within the script directory.</li>
                     <br>
-                    We used the parameters given in the code snippet: <br> <br>
-                    <ul style="font-size: 75%; padding-left: 5%">
-                        <li><span style="font-weight: bold">classNames:</span> Parameter that is an array containing the
-                            names of classes or labels. In our project, we have one class named "Tumor". <br>
-                        <li><span style="font-weight: bold">downsample:</span> This is a factor by which the image is
-                            downsampled. It's set to 3, meaning the image is reduced in size by a factor of 3. We
-                            experimented with various downsampling values, but when we opted for a high factor, we ended
-                            up with a limited number of images. Given that our dataset was already smaller than the one
-                            used in the reference project, we aimed to avoid further loss of information.<br>
-                        <li><span style="font-weight: bold">patchSize:</span> This variable defines the size of patches
-                            or segments of the image. It's set to 640, because of the input size of YOLO. <br>
-                        <li><span style="font-weight: bold">pixelOverlap:</span> This is the amount of overlap between
-                            adjacent patches, measured in pixels. It's set to 160, suggesting that adjacent patches will
-                            overlap by 160 pixels. <br>
-                        <li><span style="font-weight: bold">imageExtension:</span> This variable represents the file
-                            extension of the image files. The file extension is set to ".png", denoting that the images
-                            are formatted in PNG. PNG format was chosen over JPG or TIFF due to its compatibility and
-                            superior quality. <br>
-                        <li><span style="font-weight: bold">multiChannel:</span> This is a boolean variable indicating
-                            whether the images are multi-channel or not.<br>
-                        <li><span style="font-weight: bold">onlyAnnotated:</span> The "onlyAnnotated" variable is
-                            another boolean option. When set to true, it indicates that only annotated images will
-                            undergo processing. We set it to True to isolate the annotated regions from the background.
-                            Without this setting, the scanning of images resulted in a high presence of background, and
-                            the tiling process without background cleaning led to a lower frequency of annotated
-                            regions.<br>
-                    </ul>
-                    <img src="static/images/tisue_mask.png" class="interpolation-image"
-                         alt="An example tile and its mask."
-                         style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
+                    <li><span style="font-weight: bold">(2.b.)</span> The script executes, inferring each tile and reconstructing the main mask matching selected ROI in size. Once the main ROI segment mask is generated, the polygons representing the segmented areas are extracted and converted to the GEOJSON format, which QuPath's input/output operations can process. This file is temporarily saved
                     <br>
-                    After the completion of annotations and the creation of tiles for each slide, all tiles and masks
-                    are accumulated within a directory for further processing. However, YOLO's data format differs from
-                    other models, as it represents each annotation as a text file with each object represented as a line
-                    in the following format: <br> <br>
-                    To accommodate this format, we converted the masks by extracting polygons and saving these polygons
-                    in the appropriate format. Notably, the default YOLO format does not support the representation of
-                    polygons with holes. To address this limitation, we found a solution that involves connecting inner
-                    holes with outer circles, which has been published as open source. This approach enables us to
-                    accurately represent holes within the polygons with YOLO format, without deforming actual polygon
-                    coordinates. <a
-                        href="https://github.com/ryouchinsa/Rectlabel-support/blob/master/general_json2yolo.py">link</a>
-                    <br> <br>
+                    <li><span style="font-weight: bold">(3.)</span> After the script completes its execution, the extension reads the GEOJSON file and imports the predictions, which are then displayed on the QuPath screen. Subsequently, the extension cleans up the temporary files and prepares for the next prediction.</li>
                     <br>
-                    <img src="static/images/mask.png" class="interpolation-image"
-                         alt="An example original mask, and visualization of the created YOLO format."
-                         style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
-                    <br>
-                    <span style="font-weight: bold">Model Training</span> As described in the dataset and introduction
-                    part the aim of this project was the segmentation of tumor contained areas. Due to its notable speed
-                    and efficiency, we choose YOLO as the base model over state-of-art instance segmentation models that
-                    Fast R-CNN, Mask R-CNN, Panoptic FPN, YOLO, short for "You Only Look Once," has emerged as a pivotal
-                    technology in various domains due to its real-time object detection capabilities. The model works
-                    based on the image’s grids. The algorithm of this process works by dividing the input image into a
-                    grid of cells. Each cell is responsible for predicting bounding boxes and class probabilities for an
-                    object within it. This approach allows YOLO to be computationally efficient. In this context, YOLOv8
-                    represents a single-stage object detection model. The single-stage detector works by processing all
-                    grids at once. A key disparity between a two-stage detector and a single-stage detector lies in how
-                    they handle processing. Specifically, in the two-stage approach, the processing of regions of
-                    interest and classification occurs on different cycles. <br> <br>
-                    <span style="font-weight: bold">Extension</span> After obtaining the model, we explored various
-                    methods to integrate it into QuPath. Since QuPath is written in Java, which is not widely used in
-                    machine learning, it lacks the convenience of tools and libraries for seamless integration with
-                    machine learning models. Additionally, the ultralytics library, which facilitates YOLO model
-                    training and predictions in Python, presents challenges due to its complex class structures and
-                    design, making implementation of model inference through Java more difficult, especially considering
-                    time constraints. Our approach involved using a Python script to handle model inference and output
-                    conversion, while restricting extension to input/output tasks only. Although this approach requires
-                    additional setup, including the presence of Python and the script on the computer, it offers
-                    significantly more flexibility in terms of model integration. By separating the model inference
-                    process from Java, we were able to overcome the limitations posed by the language and leverage the
-                    rich ecosystem of machine learning tools available in Python. <br> <br>
-                    <br>
-                    <img src="static/images/qupath.jpg" class="interpolation-image"
-                         alt="Extension interface. Containing inputs for script directory (which contains script, model and virtual environment), model confidence, model IoU. The outputs are displayed on the text field at the bottom."
-                         style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
-                    <br>
-                    <p style="font-size: 100%">
-                        The overall workflow of the extension is as follows: <br> <br>
-                        <li><span style="font-weight: bold">(1.)  A region of interest (ROI) is selected within QuPath, which can be of any size but must be in the form of a rectangle. <br> <br>
-                <li><span style="font-weight: bold">(2.)  Upon pressing the "Segment Selected Region" button: <br> <br>
-                <li><span style="font-weight: bold">(  2.a.)     The selected region is tiled to match the size required for model inference. These tiled images are temporarily saved within the script directory. <br> <br>
-                <li><span style="font-weight: bold">(  2.b.)     The script executes, inferring each tile and reconstructing the main mask matching selected ROI in size. Once the main ROI segment mask is generated, the polygons representing the segmented areas are extracted and converted to the GEOJSON format, which QuPath's input/output operations can process. This file is temporarily saved within the script directory. <br> <br>
-                <li><span style="font-weight: bold">(3.)  After the script completes its execution, the extension reads the GEOJSON file and imports the predictions, which are then displayed on the QuPath screen. Subsequently, the extension cleans up the temporary files and prepares for the next prediction.  <br> <br>
-                <img src="static/images/workflow.png" class="interpolation-image"
-                     alt="Workflow of the extension."
-                     style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
-                    </div>
-                </div>
+                    <img src="static/images/workflow.jpeg" class="interpolation-image" alt="Workflow of the extension." style="display: block; margin-left: auto; margin-right: auto; width: 60%;"/>
+                </p>
             </div>
+        </div>
         </div>
     </div>
 </section>
-    <div class="container is-max-desktop">
-        <div class="columns is-centered has-text-centered">
-            <div class="column">
-                <h2 class="title is-3">Results </h2>
-                <div class="content has-text-justified">
-                    <p style="font-size: 100%">
-                        Our best performing model was achieved with YOLOv8m-seg. The obtained validation loss graphs indicate that the training was consistent and reached a plateau, suggesting that the model learned everything it could and training concluded before overfitting occurred. Despite our efforts, our best-performing model achieved only a modest ~0.75 mAP@0.5 score, which falls below the desired standard for medical applications of AI. This score may be attributed to the limited quantity of data available for training. When inspecting the confusion matrix, it's important to note that there are no True Negatives (TN) since there is only a single class. From confusion matrix, we can deduce the following metrics:
-                        <br>
-                        Recall: TP / (TP + FN) = 0.735<br>
-                        Precision: TP / (TP + FP) = 0.842<br>
-                        F1 Score: 2 * (Recall * Precision) / (Recall + Precision) = 0.785 <br>
-                        Additionally, since the number of False Negatives (FN) is greater than the number of False Positives (FP), it suggests that the model tends to miss more instances than it misclassifies. This observation may indicate that the model could benefit from either a larger and more diverse training set or improved annotations.
-                        From these graphs, it can be inferred that while the model's performance may not be groundbreaking, it represents a solid starting point, particularly when considering the limited quantity of data available for training. Even though the model appears to capture most of the areas, this is largely due to the nature of the currently annotated data, which includes stained tumor areas. There are situations where tumor areas are not stained but can still be detected by a professional pathologist, as well as instances of stained areas that are not tumors. Our current aim is to enhance the model's ability to differentiate and successfully capture these challenging areas.
-                    </p>
-                </div>
+<div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+        <div class="column">
+            <h2 class="title is-3">Results </h2>
+            <div class="content has-text-justified">
+                <p style="font-size: 100%">
+                    Our best performing model was achieved with YOLOv8m-seg. The obtained validation loss graphs indicate that the training was consistent and reached a plateau, suggesting that the model learned everything it could and training concluded before overfitting occurred. Despite our efforts, our best-performing model achieved only a modest ~0.75 mAP@0.5 score, which falls below the desired standard for medical applications of AI. This score may be attributed to the limited quantity of data available for training. When inspecting the confusion matrix, it's important to note that there are no True Negatives (TN) since there is only a single class. From confusion matrix, we can deduce the following metrics:
+                    <br>
+                    Recall: TP / (TP + FN) = 0.735<br>
+                    Precision: TP / (TP + FP) = 0.842<br>
+                    F1 Score: 2 * (Recall * Precision) / (Recall + Precision) = 0.785 <br>
+                    Additionally, since the number of False Negatives (FN) is greater than the number of False Positives (FP), it suggests that the model tends to miss more instances than it misclassifies. This observation may indicate that the model could benefit from either a larger and more diverse training set or improved annotations.
+                    From these graphs, it can be inferred that while the model's performance may not be groundbreaking, it represents a solid starting point, particularly when considering the limited quantity of data available for training. Even though the model appears to capture most of the areas, this is largely due to the nature of the currently annotated data, which includes stained tumor areas. There are situations where tumor areas are not stained but can still be detected by a professional pathologist, as well as instances of stained areas that are not tumors. Our current aim is to enhance the model's ability to differentiate and successfully capture these challenging areas.
+                </p>
             </div>
         </div>
     </div>
+</div>
 </section>
 
 
 <section class="hero is-small">
-  <div class="hero-body">
-    <div class="container">
-        <div id="results-carousel"
-             class="carousel results-carousel">
-            <div class="item">
-                <!-- Your image here -->
-                <img src="static/images/loss.jpg" alt="MY ALT TEXT"/>
-                <h2 class="subtitle has-text-centered">
-                    Models train-validation loss plots.
-                </h2>
-            </div>
-            <div class="item">
-                <!-- Your image here -->
-                <img src="static/images/Accuracy.jpg" alt="MY ALT TEXT"/>
-                <h2 class="subtitle has-text-centered">
-                    Model’s performance metrics.
-                </h2>
-            </div>
-            <div class="item">
-                <!-- Your image here -->
-                <img src="static/images/ROC.png" alt="MY ALT TEXT"/>
-                <h2 class="subtitle has-text-centered">
-                    Precision-Recall Curve and mAP@0.5 value.
-                </h2>
-            </div>
-            <div class="item">
-                <!-- Your image here -->
-                <img src="static/images/F1Conficence.png" alt="MY ALT TEXT"/>
-                <h2 class="subtitle has-text-centered">
-                    F1 - Confidence Curve. The best confidence value found as 0.341
-                </h2>
-                <div class="item">
+    <div class="hero-body">
+        <div class="container">
+            <div id="results-carousel" class="carousel results-carousel">
+                <div class="item has-text-centered">
                     <!-- Your image here -->
-                    <img src="static/images/ConfusionMatrix.png" alt="MY ALT TEXT"/>
+                    <img src="static/images/loss.jpg" alt="Models train-validation loss plots"/>
+                    <h2 class="subtitle has-text-centered">
+                        Models train-validation loss plots.
+                    </h2>
+                </div>
+                <div class="item has-text-centered">
+                    <!-- Your image here -->
+                    <img src="static/images/Accuracy.jpg" alt="Model’s performance metrics"/>
+                    <h2 class="subtitle has-text-centered">
+                        Model’s performance metrics.
+                    </h2>
+                </div>
+                <div class="item has-text-centered">
+                    <!-- Your image here -->
+                    <img src="static/images/ROC.png" alt="Precision-Recall Curve and mAP@0.5 value"/>
+                    <h2 class="subtitle has-text-centered">
+                        Precision-Recall Curve and mAP@0.5 value.
+                    </h2>
+                </div>
+                <div class="item has-text-centered">
+                    <!-- Your image here -->
+                    <img src="static/images/F1Conficence.png" alt="F1 - Confidence Curve. The best confidence value found as 0.341"/>
+                    <h2 class="subtitle has-text-centered">
+                        F1 - Confidence Curve. The best confidence value found as 0.341
+                    </h2>
+                </div>
+                <div class="item has-text-centered">
+                    <!-- Your image here -->
+                    <img src="static/images/ConfusionMatrix.png" alt="Confusion matrix"/>
                     <h2 class="subtitle has-text-centered">
                         Confusion matrix.
                     </h2>
@@ -377,32 +307,32 @@
             </div>
         </div>
     </div>
-  </div>
 </section>
 <!-- End image carousel -->
 
 
 
 
+
 <!-- Youtube video -->
 <section class="hero is-small is-light">
-  <div class="hero-body">
-    <div class="container">
-      <!-- Paper video. -->
-      <h2 class="title is-3">Video Presentation</h2>
-      <div class="columns is-centered has-text-centered">
-        <div class="column is-four-fifths">
-
-          <div class="publication-video">
-            <!-- Youtube embed code here -->
-            <iframe src="https://www.youtube.com/watch?v=fHdGzhzulhs" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-          </div>
+    <div class="hero-body">
+        <div class="container">
+            <!-- Paper video. -->
+            <h2 class="title is-3">Video Presentation</h2>
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <div class="publication-video">
+                        <!-- Youtube embed code here -->
+                        <iframe src="https://www.youtube.com/embed/fHdGzhzulhs" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </section>
 <!-- End youtube video -->
+
 
 
 
